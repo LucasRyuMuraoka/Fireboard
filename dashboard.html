@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="css/dashboard.css">
+
+  <title>Dashboard Admin - Produtos</title>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <header>
+    <h2>Painel Administrativo</h2>
+    <div id="userInfo">
+      <span id="userName">Carregando...</span>
+      <button id="logoutBtn">Sair</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <h1>Gerenciamento de Produtos</h1>
+    
+    <!-- Formulário para adicionar novos produtos 
+    <div id="addProductForm">
+      <h3>Adicionar Novo Produto</h3>
+      <form id="productForm">
+        <div>
+          <label for="name">Nome do Produto:</label>
+          <input type="text" id="name" name="name" required>
+        </div>
+        <div>
+          <label for="price">Preço (R$):</label>
+          <input type="number" id="price" name="price" step="0.01" min="0" required>
+        </div>
+        <div>
+          <label for="description">Descrição:</label>
+          <textarea id="description" name="description" rows="3"></textarea>
+        </div>
+        <div>
+          <label for="stock">Estoque:</label>
+          <input type="number" id="stock" name="stock" min="0" required>
+        </div>
+        <div id="errorMessage"></div>
+        <div>
+          <button type="submit">Adicionar Produto</button>
+        </div>
+      </form>
+    </div>
+    -->
+    
+    <!-- Lista de produtos -->
+    <div>
+      <h3>Lista de Produtos</h3>
+      <div id="loading">Carregando...</div>
+      <table id="productTabela" style="display: none;">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Preço</th>
+            <th>Descrição</th>
+            <th>Estoque</th>
+            <th>Data de Cadastro</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="productLista">
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <!-- Modal para edição de produtos 
+  <div id="editProductModal" style="display: none;">
+    <div class="modal-content">
+      <span class="close-button" onclick="document.getElementById('editProductModal').style.display='none'">&times;</span>
+      <h3>Editar Produto</h3>
+      <form id="editProductForm">
+        <input type="hidden" id="editProductId">
+        <div>
+          <label for="editName">Nome do Produto:</label>
+          <input type="text" id="editName" name="editName" required>
+        </div>
+        <div>
+          <label for="editPrice">Preço (R$):</label>
+          <input type="number" id="editPrice" name="editPrice" step="0.01" min="0" required>
+        </div>
+        <div>
+          <label for="editDescription">Descrição:</label>
+          <textarea id="editDescription" name="editDescription" rows="3"></textarea>
+        </div>
+        <div>
+          <label for="editStock">Estoque:</label>
+          <input type="number" id="editStock" name="editStock" min="0" required>
+        </div>
+        <div id="editErrorMessage"></div>
+        <div>
+          <button type="submit">Salvar Alterações</button>
+          <button type="button" onclick="document.getElementById('editProductModal').style.display='none'">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  -->
+
+  <script src="./js/config/firebaseConfig.js"></script>
+  <script src="./js/model/product.js"></script>
+  <script src="./js/services/productService.js"></script>
+  <script src="./js/auth/auth.js"></script>
+  <script>
+    // Inicializar o serviço de produtos quando a página carregar
+    document.addEventListener("DOMContentLoaded", function() {
+      const productService = new ProductService();
+      
+      // Verificar autenticação
+      firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+          console.log("Usuário autenticado:", user.email);
+          // Preencher o nome do usuário na barra superior
+          const userNameElement = document.getElementById('userName');
+          if (userNameElement) {
+            userNameElement.textContent = user.displayName || user.email;
+          }
+          
+          // Carregar lista de produtos
+          productService.carregarProdutos();
+          
+          // Configurar formulário de adição de produtos
+          const productForm = document.getElementById('productForm');
+          if (productForm) {
+            productForm.addEventListener('submit', function(e) {
+              e.preventDefault();
+              const name = document.getElementById('name').value;
+              const price = document.getElementById('price').value;
+              const description = document.getElementById('description').value;
+              const stock = document.getElementById('stock').value;
+              
+              productService.adicionarProduto(name, price, description, stock)
+                .then(() => {
+                  // Limpar formulário
+                  productForm.reset();
+                  // Recarregar lista de produtos
+                  productService.carregarProdutos();
+                })
+                .catch(error => {
+                  document.getElementById('errorMessage').textContent = "Erro ao adicionar produto: " + error.message;
+                  document.getElementById('errorMessage').style.color = 'red';
+                });
+            });
+          }
+          
+          // Configurar formulário de edição de produtos
+          const editProductForm = document.getElementById('editProductForm');
+          if (editProductForm) {
+            editProductForm.addEventListener('submit', function(e) {
+              e.preventDefault();
+              const productId = document.getElementById('editProductId').value;
+              const name = document.getElementById('editName').value;
+              const price = document.getElementById('editPrice').value;
+              const description = document.getElementById('editDescription').value;
+              const stock = document.getElementById('editStock').value;
+              
+              productService.salvarEdicaoProduto(productId, name, price, description, stock);
+            });
+          }
+        } else {
+          console.log("Usuário não autenticado, redirecionando...");
+          window.location.href = "index.html";
+        }
+      });
+      
+      // Configurar botão de logout
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+          firebase.auth().signOut()
+            .then(() => {
+              window.location.href = 'index.html';
+            })
+            .catch(error => {
+              console.error('Erro ao fazer logout:', error);
+            });
+        });
+      }
+    });
+  </script>
+</body>
+</html>
